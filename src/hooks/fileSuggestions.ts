@@ -253,15 +253,14 @@ async function getFilesUsingGit(
   logForDebugging(`[FileIndex] getFilesUsingGit called`)
 
   // Check if we're in a git repo. findGitRoot is LRU-memoized per path.
-  const repoRoot = findGitRoot(getCwd())
+  const cwd = getCwd()
+  const repoRoot = findGitRoot(cwd)
   if (!repoRoot) {
     logForDebugging(`[FileIndex] not a git repo, returning null`)
     return null
   }
 
   try {
-    const cwd = getCwd()
-
     // Get tracked files (fast - reads from git index)
     // Run from repoRoot so paths are relative to repo root, not CWD
     const lsFilesStart = Date.now()
@@ -388,13 +387,7 @@ async function getFilesUsingGit(
  * For example, if the input is ['src/index.js', 'src/utils/helpers.js'],
  * the output will be ['src/', 'src/utils/'].
  * @param files An array of file paths
- * @returns An array of unique directory names with a trailing separator
  */
-export function getDirectoryNames(files: string[]): string[] {
-  const directoryNames = new Set<string>()
-  collectDirectoryNames(files, 0, files.length, directoryNames)
-  return [...directoryNames].map(d => d + path.sep)
-}
 
 /**
  * Async variant: yields every ~10k files so 270k+ file lists don't block
@@ -634,7 +627,9 @@ function findMatchingFiles(
  */
 const REFRESH_THROTTLE_MS = 5_000
 export function startBackgroundCacheRefresh(): void {
-  if (fileListRefreshPromise) return
+  if (fileListRefreshPromise) {
+    return
+  }
 
   // Throttle only when a cache exists — cold start must always populate.
   // Refresh immediately when .git/index mtime changed (tracked files).
